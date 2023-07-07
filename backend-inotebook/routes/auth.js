@@ -7,6 +7,7 @@ var jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const JWT_SECRET = "Aakritee@1234";
 
+//Endpoint to create user
 //Create a user using: POST "/api/auth/createuser".No login require
 //Defining the Route Handler for User Registration:
 router.post(
@@ -22,8 +23,6 @@ router.post(
     //if there are errors,return bad request and the errors
     const result = validationResult(req);
     if (!result.isEmpty()) {
-      //   return res.send(`Hello, ${req.body.person}!`);
-      //
       return res.send({ errors: result.array() }); // Return early if there are validation errors
     }
     //database ma rakhni kam if error vayena vane ie creating users
@@ -64,6 +63,57 @@ router.post(
       //aru kei error xa vane
       console.error(error);
       res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+//Endpoint to authenticate user
+//Authenticate the user using: POST "/api/auth/login"
+
+router.post(
+  "/login",
+  [
+    body("email", "Enter a valid email").isEmail(),
+    body("password", "password cannot be blank").exists(),
+  ],
+
+  async (req, res) => {
+    const result = validationResult(req);
+    if (!result.isEmpty()) {
+      return res.send({ errors: result.array() });
+    }
+    const { email, password } = req.body; //destructing garexam email ra password pauna lai (req.body is a property in Express.js that represents the data sent in the request body of an HTTP request)
+    try {
+      let user = await User.findOne({ email });
+      if (!user) {
+        return res
+          .status(400)
+          .json({ error: "Please try to login with correct credentials" });
+      }
+      await bcrypt.compare(password, user.password, (err) => {
+        if (err) {
+          return res
+            .status(400)
+            .json({ error: "Please try to login with correct credentials" });
+        }
+      });
+
+      const data = {
+        user: {
+          id: user.id,
+        },
+      };
+      const authToken = jwt.sign(data, JWT_SECRET);
+
+      res.json({ authToken });
+    } catch (error) {
+      if (error.code === 11000) {
+        // Duplicate key error
+        return res.status(400).json({ error: "Email already exists" });
+      }
+      //aru kei error xa vane
+      console.error(error);
+      res.status(500).json({ error: "Server error occured" });
     }
   }
 );
