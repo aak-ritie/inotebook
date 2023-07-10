@@ -1,15 +1,18 @@
 //authentication related endpoints are here
 const express = require("express");
 const User = require("../models/User");
+
 const router = express.Router();
 const { body, validationResult } = require("express-validator");
 var jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const JWT_SECRET = "Aakritee@1234";
+var fetchuser = require("../middleware/fetchuser");
 
 //Endpoint to create user
-//Create a user using: POST "/api/auth/createuser".No login require
+// ROUTE 1: Create a user using: POST "/api/auth/createuser".No login require
 //Defining the Route Handler for User Registration:
+
 router.post(
   "/createuser",
   [
@@ -68,7 +71,7 @@ router.post(
 );
 
 //Endpoint to authenticate user
-//Authenticate the user using: POST "/api/auth/login"
+// ROUTE 2: Authenticate the user using: POST "/api/auth/login"
 
 router.post(
   "/login",
@@ -90,7 +93,7 @@ router.post(
           .status(400)
           .json({ error: "Please try to login with correct credentials" });
       }
-      await bcrypt.compare(password, user.password, (err) => {
+      bcrypt.compare(password, user.password, (err) => {
         if (err) {
           return res
             .status(400)
@@ -117,5 +120,16 @@ router.post(
     }
   }
 );
+//ROUTE 3: Get LOgged in user details using :POST /api/auth/getuser:Required login yeha hamile token pathauna parxa
+router.post("/getuser", fetchuser, async (req, res) => {
+  try {
+    userId = req.user.id;
 
+    const user = await User.findById(userId).select("-password");
+    res.send(user);
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
 module.exports = router;
