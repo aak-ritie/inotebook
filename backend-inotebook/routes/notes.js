@@ -1,42 +1,47 @@
-//notes related endpoint are here
 const express = require("express");
-var fetchusers = require("../middleware/fetchuser");
 const router = express.Router();
+const fetchuser = require("../middleware/fetchuser");
+const Note = require("../models/Note");
 const { body, validationResult } = require("express-validator");
-const Note = require("../models/User"); //notes wala module importing
 
-//ROUTE1: Get all the notes GET "/api/notes/fetchallnotes".Login required
-router.get("/fetchallnotes", fetchusers, async (req, res) => {
-  //fetching all the notes hamile fetchuser middleware use garexam so hamro req.user ma user hunxa as agadi ko code ma data.user garexam ani user ko id le find garni ho so .id gareko
+// ROUTE 1: Get All the Notes using: GET "/api/notes/getuser". Login required
+router.get("/fetchallnotes", fetchuser, async (req, res) => {
   try {
     const notes = await Note.find({ user: req.user.id });
-
     res.json(notes);
   } catch (error) {
     console.error(error.message);
     res.status(500).send("Internal Server Error");
   }
 });
-//ROUTE 2: Add a new note using: POST "/api/notes/addnote"
+
+// ROUTE 2: Add a new Note using: POST "/api/notes/addnote". Login required
 router.post(
   "/addnote",
-
+  fetchuser,
   [
     body("title", "Enter a valid title").isLength({ min: 3 }),
     body("description", "Description must be atleast 5 characters").isLength({
       min: 5,
     }),
   ],
-  fetchusers,
   async (req, res) => {
     try {
       const { title, description, tag } = req.body;
-      const result = validationResult(req);
-      if (!result.isEmpty()) {
-        return res.send({ errors: result.array() }); // Return only if there are validation errors
+
+      // If there are errors, return Bad request and the errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
       }
-      const note = new Note({ title, description, tag, user: req.user.id });
+      const note = new Note({
+        title,
+        description,
+        tag,
+        user: req.user.id,
+      });
       const savedNote = await note.save();
+
       res.json(savedNote);
     } catch (error) {
       console.error(error.message);
@@ -44,5 +49,4 @@ router.post(
     }
   }
 );
-
 module.exports = router;
